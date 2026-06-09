@@ -1,0 +1,15 @@
+{
+  "league": "Runes of Aldur",
+  "min_value_ex": 0.5,
+  "filter_path": "/path/to/your.filter",
+  "categories": [
+    "Currency",
+    "Fragments",
+    "Omens",
+    "UncutGems",
+    "LineageGems",
+    "LiquidEmotions"
+  ],
+  "allowlist": [],
+  "denylist": []
+}
