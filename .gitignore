@@ -9,3 +9,4 @@ build/
 config.json
 backups/
 *.filter
+data/

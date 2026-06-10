@@ -13,6 +13,9 @@ authors = [
 ]
 dependencies = []
 
+[project.scripts]
+poe-filter-updater = "poe_filter_updater.cli:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
