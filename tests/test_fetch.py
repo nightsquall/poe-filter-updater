@@ -1,7 +1,7 @@
 from pathlib import Path
 from urllib.parse import urlencode
 
-from poe_filter_updater.cli import build_output_filter, build_threshold_report, load_filter_first_match_states, render_override_section
+from poe_filter_updater.cli import build_divine_style_report, build_output_filter, build_threshold_report, load_filter_first_match_states, render_override_section
 from poe_filter_updater.fetch import EXCHANGE_OVERVIEW_URL, STASH_OVERVIEW_URL, CATEGORY_SPECS, output_path_for_category
 
 
@@ -121,8 +121,47 @@ def test_threshold_report_uses_category_override_and_ignore_list() -> None:
     assert report["ignored_item_matches"][0]["name"] == "Scroll of Wisdom"
 
 
+def test_divine_style_report_uses_white_background_plus_sound_rule() -> None:
+    report = build_divine_style_report(
+        value_rows=[
+            {"category": "Currency", "id": "annul", "name": "Orb of Annulment", "value_ex": 60.0},
+            {"category": "Currency", "id": "divine", "name": "Divine Orb", "value_ex": 120.0},
+            {"category": "Fragments", "id": "key", "name": "Azmeri Reliquary Key", "value_ex": 5000.0},
+        ],
+        filter_blocks={
+            "Orb of Annulment": {
+                "block": "Show",
+                "block_line": 10,
+                "base_type_line": 11,
+                "actions": (
+                    "SetFontSize 45",
+                    "SetBackgroundColor 245 105 90 255",
+                    "PlayAlertSound 1 300",
+                ),
+            },
+            "Divine Orb": {
+                "block": "Show",
+                "block_line": 20,
+                "base_type_line": 21,
+                "actions": (
+                    "SetBackgroundColor 255 255 255 255",
+                    "PlayAlertSound 6 300",
+                ),
+            },
+        },
+        ignored_items=set(),
+        enabled=True,
+    )
+
+    assert report["summary"]["divine_style_candidates"] == 1
+    assert report["divine_style_candidates"][0]["name"] == "Orb of Annulment"
+    assert report["summary"]["divine_style_unmatched"] == 1
+    assert report["divine_style_unmatched"][0]["name"] == "Azmeri Reliquary Key"
+
+
 def test_render_override_section_includes_show_and_hide_blocks() -> None:
     report = {
+        "divine_style_candidates": [{"name": "Orb of Annulment"}],
         "hidden_but_should_show": [{"name": "Arcanist's Etcher"}],
         "shown_but_should_hide": [{"name": "Scroll of Wisdom"}],
     }
@@ -130,6 +169,7 @@ def test_render_override_section_includes_show_and_hide_blocks() -> None:
     section = render_override_section(report)
 
     assert "AUTO-GENERATED OVERRIDES" in section
+    assert 'BaseType == "Orb of Annulment"' in section
     assert 'BaseType == "Arcanist\'s Etcher"' in section
     assert "SetBackgroundColor 0 255 255 255" in section
     assert 'BaseType == "Scroll of Wisdom"' in section
@@ -142,6 +182,7 @@ def test_build_output_filter_prepends_override_section() -> None:
         output = build_output_filter(
             filter_path,
             {
+                "divine_style_candidates": [{"name": "Orb of Annulment"}],
                 "hidden_but_should_show": [{"name": "Arcanist's Etcher"}],
                 "shown_but_should_hide": [],
             },

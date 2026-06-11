@@ -51,30 +51,72 @@ def fetch_category_snapshots(league: str, categories: list[str], output_dir: Pat
 
 def load_filter_first_match_states(filter_path: Path) -> dict[str, dict[str, int | str]]:
     states: dict[str, dict[str, int | str]] = {}
-    current_block: tuple[str, int] | None = None
+    for name, block in load_filter_first_match_blocks(filter_path).items():
+        states[name] = {
+            "block": block["block"],
+            "block_line": block["block_line"],
+            "base_type_line": block["base_type_line"],
+        }
+    return states
+
+
+def load_filter_first_match_blocks(filter_path: Path) -> dict[str, dict[str, object]]:
+    blocks: list[dict[str, object]] = []
+    current_block: dict[str, object] | None = None
 
     with filter_path.open("r", encoding="utf-8", errors="replace") as filter_file:
         for line_number, raw_line in enumerate(filter_file, start=1):
             line = raw_line.strip()
-            if line.startswith("Show"):
-                current_block = ("Show", line_number)
-            elif line.startswith("Hide"):
-                current_block = ("Hide", line_number)
-            elif line.startswith("Minimal"):
-                current_block = ("Minimal", line_number)
-
-            if "BaseType" not in line or current_block is None:
+            if line.startswith("Show") or line.startswith("Hide") or line.startswith("Minimal"):
+                if current_block is not None:
+                    blocks.append(current_block)
+                current_block = {
+                    "block": line.split()[0],
+                    "block_line": line_number,
+                    "base_type_line": None,
+                    "names": [],
+                    "actions": [],
+                }
                 continue
 
-            for name in re.findall(r'"([^"]+)"', line):
-                states.setdefault(
-                    name,
-                    {
-                        "block": current_block[0],
-                        "block_line": current_block[1],
-                        "base_type_line": line_number,
-                    },
-                )
+            if current_block is None:
+                continue
+
+            if line.startswith((
+                "SetFontSize",
+                "SetTextColor",
+                "SetBorderColor",
+                "SetBackgroundColor",
+                "PlayAlertSound",
+                "PlayAlertSoundPositional",
+                "CustomAlertSound",
+                "CustomAlertSoundOptional",
+                "PlayEffect",
+                "MinimapIcon",
+            )):
+                current_block["actions"].append(line)
+
+            if "BaseType" not in line:
+                continue
+
+            if current_block["base_type_line"] is None:
+                current_block["base_type_line"] = line_number
+
+            current_block["names"].extend(re.findall(r'"([^"]+)"', line))
+
+    if current_block is not None:
+        blocks.append(current_block)
+
+    states: dict[str, dict[str, object]] = {}
+    for block in blocks:
+        block_state = {
+            "block": block["block"],
+            "block_line": block["block_line"],
+            "base_type_line": block["base_type_line"],
+            "actions": tuple(block["actions"]),
+        }
+        for name in block["names"]:
+            states.setdefault(name, block_state)
 
     return states
 
@@ -187,6 +229,67 @@ def build_threshold_report(
     }
 
 
+def has_divine_like_effect(actions: tuple[str, ...]) -> bool:
+    has_white_background = any(action == "SetBackgroundColor 255 255 255 255" for action in actions)
+    has_alert_sound = any(
+        action.startswith(("PlayAlertSound", "PlayAlertSoundPositional", "CustomAlertSound", "CustomAlertSoundOptional"))
+        for action in actions
+    )
+    return has_white_background and has_alert_sound
+
+
+def build_divine_style_report(
+    value_rows: list[dict],
+    filter_blocks: dict[str, dict[str, object]],
+    ignored_items: set[str],
+    enabled: bool,
+) -> dict:
+    if not enabled:
+        return {
+            "enabled": False,
+            "threshold_ex": 50.0,
+            "divine_style_candidates": [],
+            "divine_style_unmatched": [],
+            "summary": {"divine_style_candidates": 0, "divine_style_unmatched": 0},
+        }
+
+    candidates: list[dict] = []
+    unmatched: list[dict] = []
+    for row in value_rows:
+        if row["value_ex"] <= 50 or row["name"] in ignored_items:
+            continue
+
+        filter_block = filter_blocks.get(row["name"])
+        if filter_block is None:
+            unmatched.append(row)
+            continue
+
+        actions = tuple(filter_block["actions"])
+        if has_divine_like_effect(actions):
+            continue
+
+        candidates.append(
+            {
+                **row,
+                "filter_block": filter_block["block"],
+                "filter_block_line": filter_block["block_line"],
+                "filter_base_type_line": filter_block["base_type_line"],
+                "filter_actions": list(actions),
+            }
+        )
+
+    return {
+        "enabled": True,
+        "threshold_ex": 50.0,
+        "divine_style_candidates": candidates,
+        "divine_style_unmatched": unmatched,
+        "summary": {
+            "divine_style_candidates": len(candidates),
+            "divine_style_unmatched": len(unmatched),
+        },
+    }
+
+
 def chunked_names(names: list[str], chunk_size: int = 12) -> list[list[str]]:
     return [names[index : index + chunk_size] for index in range(0, len(names), chunk_size)]
 
@@ -211,6 +314,21 @@ def render_promote_block(names: list[str]) -> str:
     return "\n".join(lines)
 
 
+def render_divine_style_block(names: list[str]) -> str:
+    lines = [
+        "Show",
+        render_base_type_line(names),
+        "    SetFontSize 45",
+        "    SetTextColor 255 0 0 255",
+        "    SetBorderColor 255 0 0 255",
+        "    SetBackgroundColor 235 255 255 255",
+        "    PlayAlertSound 6 300",
+        "    PlayEffect Red",
+        "    MinimapIcon 0 Red Star",
+    ]
+    return "\n".join(lines)
+
+
 def render_hide_block(names: list[str]) -> str:
     lines = [
         "Hide",
@@ -220,6 +338,9 @@ def render_hide_block(names: list[str]) -> str:
 
 
 def render_override_section(report: dict) -> str:
+    divine_style_candidates = sorted(
+        {row["name"] for row in report.get("divine_style_candidates", [])}
+    )
     hidden_but_should_show = sorted(
         {row["name"] for row in report["hidden_but_should_show"]}
     )
@@ -234,6 +355,11 @@ def render_override_section(report: dict) -> str:
         "# Hide currently shown items that fall below the configured threshold.",
         "#===============================================================================================================",
     ]
+
+    if divine_style_candidates:
+        blocks.append("# Divine-style overrides for items worth over 50 exalted orbs")
+        for names in chunked_names(divine_style_candidates):
+            blocks.append(render_divine_style_block(names))
 
     if hidden_but_should_show:
         blocks.append("# Promoted items: hidden by base filter, shown by updater")
@@ -255,7 +381,7 @@ def build_output_filter(input_filter_path: Path, report: dict) -> str:
 
     original_filter = original_filter.replace(
         "#name:0.5 Twisters",
-        "#name:PoE Filter Updater Debug",
+        "#name:PoE Filter Updater Divine50 Debug",
         1,
     )
 
@@ -272,11 +398,17 @@ def print_summary(
         print(f"Saved {len(lines)} {category} entries to {category_path}")
 
     summary = report["summary"]
+    divine_summary = report["divine_style_summary"]
     print(
         "Generated threshold report with "
         f"{summary['shown_but_should_hide']} shown-but-should-hide, "
         f"{summary['hidden_but_should_show']} hidden-but-should-show, and "
         f"{summary['unmatched_items']} unmatched items at {report_path}"
+    )
+    print(
+        "Divine-style feature found "
+        f"{divine_summary['divine_style_candidates']} candidates and "
+        f"{divine_summary['divine_style_unmatched']} unmatched high-value items"
     )
     print(f"Wrote updated filter to {output_filter_path}")
 
@@ -288,6 +420,7 @@ def main() -> int:
     league = config["league"]
     min_value_ex = config["min_value_ex"]
     category_thresholds_ex = config.get("category_thresholds_ex", {})
+    enable_divine_style_for_50ex = config.get("enable_divine_style_for_50ex", False)
     categories = config["categories"]
     ignored_items = set(config.get("ignored_items", []))
     output_dir = Path(config["poe_ninja_output_dir"])
@@ -298,6 +431,7 @@ def main() -> int:
     snapshots = fetch_category_snapshots(league, categories, output_dir)
     value_rows = build_value_rows(snapshots)
     filter_states = load_filter_first_match_states(filter_path)
+    filter_blocks = load_filter_first_match_blocks(filter_path)
     report = build_threshold_report(
         value_rows,
         filter_states,
@@ -305,6 +439,16 @@ def main() -> int:
         category_thresholds_ex,
         ignored_items,
     )
+    divine_style_report = build_divine_style_report(
+        value_rows,
+        filter_blocks,
+        ignored_items,
+        enable_divine_style_for_50ex,
+    )
+    report["divine_style_candidates"] = divine_style_report["divine_style_candidates"]
+    report["divine_style_unmatched"] = divine_style_report["divine_style_unmatched"]
+    report["divine_style_summary"] = divine_style_report["summary"]
+    report["enable_divine_style_for_50ex"] = enable_divine_style_for_50ex
     save_json(report_path, report)
     updated_filter = build_output_filter(filter_path, report)
     write_text(output_filter_path, updated_filter)

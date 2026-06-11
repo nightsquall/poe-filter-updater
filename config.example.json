@@ -6,9 +6,10 @@
     "Runes": 1.0,
     "Essences": 1.0
   },
+  "enable_divine_style_for_50ex": true,
   "filter_path": "currentfilter.filter",
   "backup_filter_path": "backups/currentfilter.filter",
-  "output_filter_path": "generated/poe-filter-updater-debug.filter",
+  "output_filter_path": "generated/poe-filter-updater-divine50-debug.filter",
   "poe_ninja_output_dir": "data/poe_ninja",
   "report_output_path": "data/reports/value_threshold_report.json",
   "categories": [
