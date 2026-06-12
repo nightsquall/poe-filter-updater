@@ -41,6 +41,7 @@ This will:
 - `min_value_ex` is the global default threshold
 - `category_thresholds_ex` optionally overrides `min_value_ex` per poe.ninja category
 - `enable_divine_style_for_50ex` enables Divine-style overrides for items worth over `50 ex`
+- `always_show_unique_rings` forces all unique ring base types to remain shown
 - `ignored_items` is an exact item-name list that the updater will not modify
 
 Example:

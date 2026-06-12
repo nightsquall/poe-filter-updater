@@ -24,6 +24,14 @@ CATEGORY_SPECS = {
     "Catalysts": {"endpoint": EXCHANGE_OVERVIEW_URL, "type": "Breach"},
     "Verisium": {"endpoint": EXCHANGE_OVERVIEW_URL, "type": "Verisium"},
     "Unique Tablets": {"endpoint": STASH_OVERVIEW_URL, "type": "UniqueTablets"},
+    "UniqueWeapons": {"endpoint": STASH_OVERVIEW_URL, "type": "UniqueWeapons"},
+    "UniqueArmours": {"endpoint": STASH_OVERVIEW_URL, "type": "UniqueArmours"},
+    "UniqueAccessories": {"endpoint": STASH_OVERVIEW_URL, "type": "UniqueAccessories"},
+    "UniqueFlasks": {"endpoint": STASH_OVERVIEW_URL, "type": "UniqueFlasks"},
+    "UniqueCharms": {"endpoint": STASH_OVERVIEW_URL, "type": "UniqueCharms"},
+    "UniqueJewels": {"endpoint": STASH_OVERVIEW_URL, "type": "UniqueJewels"},
+    "UniqueSanctumRelics": {"endpoint": STASH_OVERVIEW_URL, "type": "UniqueSanctumRelics"},
+    "PrecursorTablets": {"endpoint": STASH_OVERVIEW_URL, "type": "PrecursorTablets"},
 }
 
 

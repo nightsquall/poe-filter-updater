@@ -4,9 +4,18 @@
   "category_thresholds_ex": {
     "Currency": 0.5,
     "Runes": 1.0,
-    "Essences": 1.0
+    "Essences": 1.0,
+    "UniqueWeapons": 3.0,
+    "UniqueArmours": 3.0,
+    "UniqueAccessories": 3.0,
+    "UniqueFlasks": 3.0,
+    "UniqueCharms": 5.0,
+    "UniqueJewels": 1.0,
+    "UniqueSanctumRelics": 1.0,
+    "PrecursorTablets": 1.0
   },
   "enable_divine_style_for_50ex": true,
+  "always_show_unique_rings": true,
   "filter_path": "currentfilter.filter",
   "backup_filter_path": "backups/currentfilter.filter",
   "output_filter_path": "generated/poe-filter-updater-divine50-debug.filter",
@@ -27,7 +36,15 @@
     "Liquid Emotions",
     "Catalysts",
     "Verisium",
-    "Unique Tablets"
+    "Unique Tablets",
+    "UniqueWeapons",
+    "UniqueArmours",
+    "UniqueAccessories",
+    "UniqueFlasks",
+    "UniqueCharms",
+    "UniqueJewels",
+    "UniqueSanctumRelics",
+    "PrecursorTablets"
   ],
   "ignored_items": []
 }
